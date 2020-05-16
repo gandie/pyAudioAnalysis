@@ -292,7 +292,8 @@ def train_random_forest_regression(features, labels, n_estimators):
 
 def extract_features_and_train(paths, mid_window, mid_step, short_window,
                                short_step, classifier_type, model_name,
-                               compute_beat=False, train_percentage=0.90):
+                               compute_beat=False, train_percentage=0.90,
+                               from_dict=False):
     """
     This function is used as a wrapper to segment-based audio feature extraction
     and classifier training.
@@ -305,16 +306,25 @@ def extract_features_and_train(paths, mid_window, mid_step, short_window,
         classifier_type:            "svm" or "knn" or "randomforest" or
                                     "gradientboosting" or "extratrees"
         model_name:                 name of the model to be saved
+        from_dict:                  OPTIONAL. read paths as dictionarys where keys
+                                    are classnames and values lists of filehandles
+                                    for feature extraction
     RETURNS:
         None. Resulting classifier along with the respective model
         parameters are saved on files.
     """
 
     # STEP A: Feature Extraction:
-    features, class_names, _ = \
-        aF.multiple_directory_feature_extraction(paths, mid_window, mid_step,
-                                                 short_window, short_step,
-                                                 compute_beat=compute_beat)
+    if not from_dict:
+        features, class_names, _ = \
+            aF.multiple_directory_feature_extraction(paths, mid_window, mid_step,
+                                                     short_window, short_step,
+                                                     compute_beat=compute_beat)
+    else:
+        features, class_names =  \
+            aF.dictionary_feature_extraction(paths, mid_window, mid_step,
+                                             short_window, short_step,
+                                             compute_beat=compute_beat)
 
     if len(features) == 0:
         print("trainSVM_feature ERROR: No data found in any input folder!")
@@ -327,8 +337,12 @@ def extract_features_and_train(paths, mid_window, mid_step, short_window,
 
     for i, feat in enumerate(features):
         if len(feat) == 0:
-            print("trainSVM_feature ERROR: " + paths[i] +
-                  " folder is empty or non-existing!")
+            if not from_dict:
+                print("trainSVM_feature ERROR: " + paths[i] +
+                      " folder is empty or non-existing!")
+            else:
+                print("trainSVM_feature ERROR: " + class_names[i] +
+                      " class name key is empty or non-existing!")
             return
 
     # STEP B: classifier Evaluation and Parameter Selection:
@@ -343,7 +357,7 @@ def extract_features_and_train(paths, mid_window, mid_step, short_window,
     elif classifier_type == "extratrees":
         classifier_par = np.array([10, 25, 50, 100, 200, 500])
 
-    # get optimal classifeir parameter:
+    # get optimal classifier parameter:
     temp_features = []
     for feat in features:
         temp = []

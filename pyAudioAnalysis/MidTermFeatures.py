@@ -254,6 +254,70 @@ def multiple_directory_feature_extraction(path_list, mid_window, mid_step,
     return features, class_names, file_names
 
 
+def dictionary_feature_extraction(class_dict, mid_window, mid_step, short_window,
+                                  short_step, compute_beat=False):
+    """
+    Same as multiple_directory_feature_extraction but using a dictionary
+    where keys are classes and values are lists of filehandles
+
+    Shamelessly copied from functions above
+    """
+    # feature extraction for each class:
+    features = []
+    class_names = []
+
+    for classname, file_handles in class_dict.items():
+        if not file_handles:
+            continue
+
+        mid_term_features = np.array([])
+
+        for item in file_handles:
+            sampling_rate, signal = audioBasicIO.read_audio_file(item)
+            if sampling_rate == 0:
+                continue        
+   
+            signal = audioBasicIO.stereo_to_mono(signal)
+            if signal.shape[0] < float(sampling_rate)/5:
+                print("  (AUDIO FILE TOO SMALL - SKIPPING)")
+                continue
+
+            if compute_beat:
+                mid_features, short_features, mid_feature_names = \
+                    mid_feature_extraction(signal, sampling_rate,
+                                           round(mid_window * sampling_rate),
+                                           round(mid_step * sampling_rate),
+                                           round(sampling_rate * short_window),
+                                           round(sampling_rate * short_step))
+                beat, beat_conf = beat_extraction(short_features, short_step)
+            else:
+                mid_features, _, mid_feature_names = \
+                    mid_feature_extraction(signal, sampling_rate,
+                                           round(mid_window * sampling_rate),
+                                           round(mid_step * sampling_rate),
+                                           round(sampling_rate * short_window),
+                                           round(sampling_rate * short_step))
+
+            mid_features = np.transpose(mid_features)
+            mid_features = mid_features.mean(axis=0)
+            # long term averaging of mid-term statistics
+            if (not np.isnan(mid_features).any()) and \
+                    (not np.isinf(mid_features).any()):
+                if compute_beat:
+                    mid_features = np.append(mid_features, beat)
+                    mid_features = np.append(mid_features, beat_conf)
+                if len(mid_term_features) == 0:
+                    # append feature vector
+                    mid_term_features = mid_features
+                else:
+                    mid_term_features = np.vstack((mid_term_features, mid_features))
+
+        if mid_term_features.shape[0] > 0:
+            class_names.append(classname)
+            features.append(mid_term_features)
+
+    return features, class_names
+
 def directory_feature_extraction_no_avg(folder_path, mid_window, mid_step,
                                         short_window, short_step):
     """
