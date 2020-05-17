@@ -148,6 +148,7 @@ def read_audio_generic(input_file):
             signal = numpy.array(temp_signal).T
     except:
         print("Error: file not found or other I/O error. (DECODING FAILED)")
+        raise
     return sampling_rate, signal
 
 
