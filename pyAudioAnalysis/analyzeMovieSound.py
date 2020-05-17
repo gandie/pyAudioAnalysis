@@ -16,8 +16,8 @@ def classifyFolderWrapper(inputFolder, modelType, modelName, outputMode=False):
 	elif modelType=='knn':
 		[Classifier, MEAN, STD, classNames, mtWin, mtStep, stWin, stStep, compute_beat] = aT.load_model_knn(modelName)
 
-	PsAll = numpy.zeros((len(classNames), ))	
-		
+	PsAll = numpy.zeros((len(classNames), ))
+
 	files = "*.wav"
 	if os.path.isdir(inputFolder):
 		strFilePattern = os.path.join(inputFolder, files)
@@ -28,30 +28,30 @@ def classifyFolderWrapper(inputFolder, modelType, modelName, outputMode=False):
 	wavFilesList.extend(glob.glob(strFilePattern))
 	wavFilesList = sorted(wavFilesList)
 	if len(wavFilesList)==0:
-		print "No WAV files found!"
-		return 
-	
+		print("No WAV files found!")
+		return
+
 	Results = []
-	for wavFile in wavFilesList:	
-		[Fs, x] = audioBasicIO.readAudioFile(wavFile)	
+	for wavFile in wavFilesList:
+		[Fs, x] = audioBasicIO.readAudioFile(wavFile)
 		signalLength = x.shape[0] / float(Fs)
 		[Result, P, classNames] = aT.file_classification(wavFile, modelName, modelType)
-		PsAll += (numpy.array(P) * signalLength)		
+		PsAll += (numpy.array(P) * signalLength)
 		Result = int(Result)
 		Results.append(Result)
 		if outputMode:
-			print "{0:s}\t{1:s}".format(wavFile,classNames[Result])
+			print("{0:s}\t{1:s}".format(wavFile,classNames[Result]))
 	Results = numpy.array(Results)
-	
+
 	# print distribution of classes:
 	[Histogram, _] = numpy.histogram(Results, bins=numpy.arange(len(classNames)+1))
-	if outputMode:	
+	if outputMode:
 		for i,h in enumerate(Histogram):
-			print "{0:20s}\t\t{1:d}".format(classNames[i], h)
+			print("{0:20s}\t\t{1:d}".format(classNames[i], h))
 	PsAll = PsAll / numpy.sum(PsAll)
 
 
-	if outputMode:	
+	if outputMode:
 		fig = plt.figure()
 		ax = fig.add_subplot(111)
 		plt.title("Classes percentage " + inputFolder.replace('Segments',''))
@@ -62,17 +62,17 @@ def classifyFolderWrapper(inputFolder, modelType, modelName, outputMode=False):
 		plt.show()
 	return classNames, PsAll
 
-def getMusicSegmentsFromFile(inputFile):	
+def getMusicSegmentsFromFile(inputFile):
 	modelType = "svm"
 	modelName = "data/svmMovies8classes"
-	
+
 	dirOutput = inputFile[0:-4] + "_musicSegments"
-	
+
 	if os.path.exists(dirOutput) and dirOutput!=".":
-		shutil.rmtree(dirOutput)	
-	os.makedirs(dirOutput)	
-	
-	[Fs, x] = audioBasicIO.readAudioFile(inputFile)	
+		shutil.rmtree(dirOutput)
+	os.makedirs(dirOutput)
+
+	[Fs, x] = audioBasicIO.readAudioFile(inputFile)
 
 	if modelType=='svm':
 		[Classifier, MEAN, STD, classNames, mtWin, mtStep, stWin, stStep, compute_beat] = aT.load_model(modelName)
@@ -84,32 +84,32 @@ def getMusicSegmentsFromFile(inputFile):
 
 	for i, s in enumerate(segs):
 		if (classNames[int(classes[i])] == "Music") and (s[1] - s[0] >= minDuration):
-			strOut = "{0:s}{1:.3f}-{2:.3f}.wav".format(dirOutput+os.sep, s[0], s[1])	
+			strOut = "{0:s}{1:.3f}-{2:.3f}.wav".format(dirOutput+os.sep, s[0], s[1])
 			wavfile.write( strOut, Fs, x[int(Fs*s[0]):int(Fs*s[1])])
 
 def analyzeDir(dirPath):
-	for i,f in enumerate(glob.glob(dirPath + os.sep + '*.wav')):				# for each WAV file					
-		getMusicSegmentsFromFile(f)	
+	for i,f in enumerate(glob.glob(dirPath + os.sep + '*.wav')):				# for each WAV file
+		getMusicSegmentsFromFile(f)
 		[c, P]= classifyFolderWrapper(f[0:-4] + "_musicSegments", "svm", "data/svmMusicGenre8", False)
 		if i==0:
-			print "".ljust(100)+"\t",
+			print("".ljust(100)+"\t")
 			for C in c:
-				print C.ljust(12)+"\t",
-			print
-		print f.ljust(100)+"\t",
+				print(C.ljust(12)+"\t")
+			print("")
+		print(f.ljust(100)+"\t")
 		for p in P:
-				print "{0:.2f}".format(p).ljust(12)+"\t",
-		print
-		
-def main(argv):	
-	
+				print("{0:.2f}".format(p).ljust(12)+"\t")
+		print("")
+
+def main(argv):
+
 	if argv[1]=="--file":
-		getMusicSegmentsFromFile(argv[2])	
-		classifyFolderWrapper(argv[2][0:-4] + "_musicSegments", "svm", "data/svmMusicGenre8", True)		
-		
-	elif argv[1]=="--dir":	
-		analyzeDir(argv[2])	
-		
+		getMusicSegmentsFromFile(argv[2])
+		classifyFolderWrapper(argv[2][0:-4] + "_musicSegments", "svm", "data/svmMusicGenre8", True)
+
+	elif argv[1]=="--dir":
+		analyzeDir(argv[2])
+
 	elif argv[1]=="--sim":
 		csvFile = argv[2]
 		f = []
@@ -129,16 +129,16 @@ def main(argv):
 
 			Sim = numpy.zeros((f.shape[0], f.shape[0]))
 			for i in range(f.shape[0]):
-				for j in range(f.shape[0]):	
+				for j in range(f.shape[0]):
 					Sim[i,j] = scipy.spatial.distance.cdist(numpy.reshape(f[i,:], (f.shape[1],1)).T, numpy.reshape(f[j,:], (f.shape[1],1)).T, 'cosine')
-								
+
 			Sim1 = numpy.reshape(Sim, (Sim.shape[0]*Sim.shape[1], 1))
 			plt.hist(Sim1)
 			plt.show()
 
 			fo = open(csvFile + "_simMatrix", "wb")
 			cPickle.dump(fileNames,  fo, protocol = cPickle.HIGHEST_PROTOCOL)
-			cPickle.dump(f, fo, protocol = cPickle.HIGHEST_PROTOCOL)			
+			cPickle.dump(f, fo, protocol = cPickle.HIGHEST_PROTOCOL)
 			cPickle.dump(Sim, fo, protocol = cPickle.HIGHEST_PROTOCOL)
 			fo.close()
 
@@ -146,21 +146,21 @@ def main(argv):
 		try:
 			fo = open(argv[2], "rb")
 		except IOError:
-				print "didn't find file"
+				print("didn't find file")
 				return
-		try:			
+		try:
 			fileNames 	= cPickle.load(fo)
 			f 			= cPickle.load(fo)
 			Sim 		= cPickle.load(fo)
 		except:
 			fo.close()
-		fo.close()	
-		print fileNames
+		fo.close()
+		print(fileNames)
 		Sim1 = numpy.reshape(Sim, (Sim.shape[0]*Sim.shape[1], 1))
 		plt.hist(Sim1)
 		plt.show()
 
-	elif argv[1]=="--audio-event-dir":		
+	elif argv[1]=="--audio-event-dir":
 		files = "*.wav"
 		inputFolder = argv[2]
 		if os.path.isdir(inputFolder):
@@ -170,26 +170,26 @@ def main(argv):
 
 		wavFilesList = []
 		wavFilesList.extend(glob.glob(strFilePattern))
-		wavFilesList = sorted(wavFilesList)		
-		for i,w in enumerate(wavFilesList):			
+		wavFilesList = sorted(wavFilesList)
+		for i,w in enumerate(wavFilesList):
 			[flagsInd, classesAll, acc, CM] = aS.mtFileClassification(w, "data/svmMovies8classes", "svm", False, '')
 			histTemp = numpy.zeros( (len(classesAll), ) )
 			for f in flagsInd:
 				histTemp[int(f)] += 1.0
 			histTemp /= histTemp.sum()
-			
-			if i==0:
-				print "".ljust(100)+"\t",
-				for C in classesAll:
-					print C.ljust(12)+"\t",
-				print
-			print w.ljust(100)+"\t",
-			for h in histTemp:				
-				print "{0:.2f}".format(h).ljust(12)+"\t",
-			print
 
-			
+			if i==0:
+				print("".ljust(100)+"\t")
+				for C in classesAll:
+					print(C.ljust(12)+"\t")
+				print("")
+			print(w.ljust(100)+"\t")
+			for h in histTemp:
+				print("{0:.2f}".format(h).ljust(12)+"\t")
+			print("")
+
+
 	return 0
-	
+
 if __name__ == '__main__':
 	main(sys.argv)
